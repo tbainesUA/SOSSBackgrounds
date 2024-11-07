@@ -25,9 +25,10 @@ if __name__ == "__main__":
 
     # Load environment variables
     load_dotenv()
-    
+
     CSV_DIR = Path(os.getenv("CSV_DIR"))
 
+    # internal soss library database
     SOSSLIB_STAGE1_CSV = os.getenv("SOSSLIB_STAGE1_CSV")
     SOSSLIB_UNCAL_CSV = os.getenv("SOSSLIB_UNCAL_CSV")
 
@@ -40,6 +41,7 @@ if __name__ == "__main__":
     filters = ["CLEAR"]
     zodiCal_programs = [1541, 4479, 6658]
 
+    # query criteria to filter soss observations
     query = (
         "SUBARRAY == @subarrays and "
         "FILTER == @filters and "
