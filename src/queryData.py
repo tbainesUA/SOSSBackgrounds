@@ -14,11 +14,11 @@ def filter_dataframe(df: pd.DataFrame, query_criteria: str) -> pd.DataFrame:
     return df.query(query_criteria)
 
 
-def save_dataframes(output_dir: Path, dataframes: dict):
+def save_dataframes(dataframes: dict):
     """Saves DataFrames to CSV files in the specified directory."""
-    output_dir.mkdir(parents=True, exist_ok=True)
+
     for filename, df in dataframes.items():
-        df.to_csv(output_dir / filename, index=False)
+        df.to_csv(filename, index=False)
 
 
 if __name__ == "__main__":
@@ -28,9 +28,16 @@ if __name__ == "__main__":
 
     CSV_DIR = Path(os.getenv("CSV_DIR"))
 
+    CSV_DIR.mkdir(parents=True, exist_ok=True)
+
     # internal soss library database
     SOSSLIB_STAGE1_CSV = os.getenv("SOSSLIB_STAGE1_CSV")
     SOSSLIB_UNCAL_CSV = os.getenv("SOSSLIB_UNCAL_CSV")
+
+    # output file
+    ZODICAL_CSV = os.getenv("ZODICAL_CSV")
+    ZODICAL_VALIDATION_CSV = os.getenv("ZODICAL_VALIDATION_CSV")
+    ZODICAL_SCI_CSV = os.getenv("ZODICAL_SCI_CSV")
 
     # Load SOSS library data files
     uncal_df = load_csv(SOSSLIB_UNCAL_CSV)
@@ -62,10 +69,10 @@ if __name__ == "__main__":
 
     # Define output data and files
     output_files = {
-        "zodical_stage1_rateints.csv": zodical_stage1_df,
-        "zodical_stage1_validation_rateints.csv": zodical_stage1_validation_df,
-        "zodical_uncal_sci.csv": zodical_uncal_sci_df,
+        ZODICAL_CSV: zodical_stage1_df,
+        ZODICAL_VALIDATION_CSV: zodical_stage1_validation_df,
+        ZODICAL_SCI_CSV: zodical_uncal_sci_df,
     }
 
     # Save filtered data to CSV files
-    save_dataframes(CSV_DIR, output_files)
+    save_dataframes(output_files)
