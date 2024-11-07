@@ -60,7 +60,8 @@ if __name__ == "__main__":
     uncal_df_filtered = filter_dataframe(uncal_df, query)
     stage1_df_filtered = filter_dataframe(stage1_df, query)
 
-    # Create DataFrames for different purposes
+    # Split dataframes in to the data analysis set, validation,
+    # and science sets
     zodical_stage1_df = stage1_df_filtered.query("PROGRAM in @zodiCal_programs")
     zodical_stage1_validation_df = stage1_df_filtered.query(
         "PROGRAM not in @zodiCal_programs"
