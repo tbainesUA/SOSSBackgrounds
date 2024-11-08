@@ -11,7 +11,8 @@ def process_flatfield(file, output_dir):
 
     Parameters:
     - file (str or Path): Path to the input FITS file.
-    - output_dir (str or Path): Directory where the corrected file will be saved.
+    - output_dir (str or Path): Directory where the corrected file will be
+    saved.
 
     Returns:
     - Path: The output file path where the corrected FITS file is saved.
@@ -47,7 +48,8 @@ def apply_flat_field(files, output_dir, parallel=False):
 
     Parameters:
     - df (pd.DataFrame): DataFrame containing file paths.
-    - filepath_col (str): Column name in the DataFrame that contains the file paths.
+    - filepath_col (str): Column name in the DataFrame that contains the file 
+        paths.
     - output_dir (Path): Directory where processed files will be saved.
 
     Returns:
