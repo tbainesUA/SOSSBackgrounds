@@ -17,11 +17,16 @@ from jwst import datamodels
 from skimage.restoration import denoise_nl_means, estimate_sigma
 from maskfill import maskfill
 
+from dotenv import load_dotenv
+
 
 from preprocessing.flatfield import apply_flat_field
 from source_detection import detect_source_mask
 
-nonref = (slice(-4, 4), slice(4, -4))
+
+load_dotenv()
+
+nonref = (slice(4, -4), slice(4, -4))
 
 
 def get_current_utc():
@@ -108,157 +113,170 @@ def group_sequential_observations(df, gap_days=1):
     return group
 
 
-# environment variables
-zodical_csv = os.getenv("ZODICAL_CSV")
-flatfield_dir = Path(os.getenv("FLATFIELD_DIR"))
-sossbkg_dir = Path(os.getenv("SOSSBKG_DIR"))
+if __name__ == "__main__":
+    # environment variables
+    zodical_csv = os.getenv("ZODICAL_CSV")
+    flatfield_dir = Path(os.getenv("FLATFIELD_DIR"))
+    sossbkg_dir = Path(os.getenv("SOSSBKG_DIR"))
 
+    print(f"Flatfield Dir: {flatfield_dir}")
+    print(f"SOSSBkg Dir: {sossbkg_dir}")
 
-# load data
-zodical_stage1_df = pd.read_csv(zodical_csv)
+    # load data
+    zodical_stage1_df = pd.read_csv(zodical_csv)
 
-# Ensure the output directory exists
-flatfield_dir.mkdir(parents=True, exist_ok=True)
+    # Ensure the output directory exists
+    flatfield_dir.mkdir(parents=True, exist_ok=True)
 
-# Update the DataFrame with the processed file paths
-fits_files = zodical_stage1_df["FILEPATH"]
+    # Update the DataFrame with the processed file paths
+    fits_files = zodical_stage1_df["FILEPATH"]
 
-# apply flatield step
-flatfield_fits_files = apply_flat_field(
-    files=fits_files, output_dir=flatfield_dir, parallel=True
-)
+    # if len(fits_files) == len(list(flatfield_dir.rglob("*fits"))):
 
-# add files to the dataframe
-zodical_stage1_df["FLATFIELD_FILEPATHS"] = pd.Series(flatfield_fits_files)
+    #     # apply flatield step
+    #     flatfield_fits_files = apply_flat_field(
+    #         files=fits_files, output_dir=flatfield_dir, parallel=True
+    #     )
 
+    # else:
+    #     print("SKIPPING FLATFIELDING")
+    flatfield_fits_files = list(flatfield_dir.rglob("*fits"))
 
-# Step for running through files to group them to make bkg images
+    # add files to the dataframe
+    zodical_stage1_df["FLATFIELD_FILEPATH"] = pd.Series(flatfield_fits_files)
+    # Step for running through files to group them to make bkg images
 
-# keys which to group data by
-group_keys = ["PROGRAM", "TARGPROP", "OBSERVTN"]
+    # keys which to group data by
+    group_keys = ["PROGRAM", "TARGPROP", "OBSERVTN"]
 
-include_pwcpos = False
+    include_pwcpos = False
 
-if include_pwcpos:
-    group_keys += ["PWCPOS"]
+    if include_pwcpos:
+        group_keys += ["PWCPOS"]
 
+    sossbkg_dir.mkdir(exist_ok=True, parents=True)
 
-sossbkg_dir.mkdir(exist_ok=True, parents=True)
+    # grouped dataframes
+    grouped_dfs = zodical_stage1_df.groupby(group_keys)
 
-# grouped dataframes
-grouped_dfs = zodical_stage1_df.groupby(group_keys)
-
-# Main loop to iterate over the grouped data frames by the Program ID, target,
-# and observation number. Datasets are then given a group ID based on
-# observations that were taking sequentially. There are a total of 10 exposures
-# per observation for the Calibration acitivty programs that should have been
-# taken one after another. However, im guessing due to scheduling windows
-# some data was taken a few or many days apart. We know that the background
-# intensity changes over the course of the year. In addition, it's hypothesized
-# that the background may vary spatailly given the PWCPOS keyword.
-for keys, df in grouped_dfs:
-    df["obs_groups"] = df["DATE-BEG"].transform(
-        lambda x: group_sequential_observations(x)
-    )
-
-    # iterate over the observation groups to process and combine the
-    # file datasets
-    for _, files in df.groupby(["obs_groups"])["FLATFIELD_FILEPATH"]:
-
-        # load the data
-        input_models = []
-        for file in files:
-            with fits.open(file) as hdul:
-                input_models.append(datamodels.CubeModel(hdul))
-
-        # make initial background image
-        bkg = sigma_clipped_stats(
-            data=[dm.data[0] for dm in input_models], sigma=1, axis=0
+    # Main loop to iterate over the grouped data frames by the Program ID, target,
+    # and observation number. Datasets are then given a group ID based on
+    # observations that were taking sequentially. There are a total of 10 exposures
+    # per observation for the Calibration acitivty programs that should have been
+    # taken one after another. However, im guessing due to scheduling windows
+    # some data was taken a few or many days apart. We know that the background
+    # intensity changes over the course of the year. In addition, it's hypothesized
+    # that the background may vary spatailly given the PWCPOS keyword.
+    for keys, df in grouped_dfs:
+        df["obs_groups"] = df["DATE-BEG"].transform(
+            lambda x: group_sequential_observations(x)
         )
 
-        # source masking
-        shape = (len(files), 2040, 2040)
-        source_masks = np.zeros(shape, dtype=bool)
+        # iterate over the observation groups to process and combine the
+        # file datasets
+        for _, files in df.groupby(["obs_groups"])["FLATFIELD_FILEPATH"]:
 
-        for i, dm in enumerate(input_models):
-            data = dm.data[0][nonref]
-            err = dm.err[0][nonref]
-            mask = dm.dq[0][nonref] > 0
-            source_masks[i] = detect_source_mask(
-                data,
-                err,
-                mask,
-                bkg=bkg[nonref],
+            # load the data
+            input_models = []
+            for file in files:
+                with fits.open(file) as hdul:
+                    # print("DATA SHAPE:", hdul["SCI"].data.shape)
+                    input_models.append(datamodels.CubeModel(hdul))
+
+            # make initial background image
+            bkg = sigma_clipped_stats(
+                data=[dm.data[0] for dm in input_models], sigma=1, axis=0
+            )[1]
+
+            # print("BKG SHape:", bkg.shape)
+            # source masking
+            shape = (len(files), 2040, 2040)
+            source_masks = np.zeros(shape, dtype=bool)
+
+            for i, dm in enumerate(input_models):
+                print(dm.data[0].shape)
+                data = dm.data[0][nonref]
+                err = dm.err[0][nonref]
+                mask = dm.dq[0][nonref] > 0
+                # print(data.shape)
+                print(data.shape, err.shape, mask.shape, bkg.shape)
+                # assert data.shape == (2040, 2040)
+
+                source_masks[i] = detect_source_mask(
+                    data,
+                    err,
+                    mask,
+                    bkg=bkg[nonref],
+                )
+
+            # apply source mask and reconstruct the median clipped combined image
+            bkg = sigma_clipped_stats(
+                [dm.data[0][nonref] for dm in input_models],
+                mask=source_masks,
+                sigma=1,
+                axis=0,
+            )[1]
+
+            # apply maskfill to fill nans
+            bkg = apply_maskfill(bkg, mask=np.isnan(mask))
+
+            # apply the non local mean denoising algorithm to smooth image
+            bkg_denoise = apply_denoise_nl_means(bkg)
+
+            # FITS formating
+            bkg_fits = fits.ImageHDU(data=bkg, name="BKG")
+            bkg_fits.header["DESCRIP"] = "Flatfielded Empirical SOSS Background"
+            bkg_dn_fits = fits.ImageHDU(data=bkg_denoise, name="BKGDN")
+            bkg_dn_fits.header["DESCRIP"] = (
+                "Flatfielded Empirical SOSS Background NLM denoised"
             )
 
-        # apply source mask and reconstruct the median clipped combined image
-        bkg = sigma_clipped_stats(
-            [dm.data[0][nonref] for dm in input_models],
-            mask=source_masks,
-            sigma=1,
-            axis=0,
-        )
+            # RA and Dec pointing averages associated with the background obs
+            skycoords = np.array(
+                [
+                    (
+                        fits.getval(file, "RA_V1", extname="SCI"),
+                        fits.getval(file, "DEC_V1", extname="SCI"),
+                    )
+                    for file in files
+                ]
+            )
+            skycoords_mean = np.mean(skycoords, axis=0)
+            ra_obs, dec_obs = skycoords_mean
+            sky_coords = SkyCoord(ra_obs, dec_obs, frame="icrs", unit="deg")
 
-        # apply maskfill to fill nans
-        bkg = apply_maskfill(bkg, mask=np.isnan(mask))
+            # convert to ecliptic coordinates
+            ecliptic_coords = sky_coords.transform_to("geocentricmeanecliptic")
+            lon = ecliptic_coords.lon.value
+            lat = ecliptic_coords.lat.value
 
-        # apply the non local mean denoising algorithm to smooth image
-        bkg_denoise = apply_denoise_nl_means(bkg)
+            # # average/middle time of the background
 
-        # FITS formating
-        bkg_fits = fits.ImageHDU(data=bkg, name="BKG")
-        bkg_fits.header["DESCRIP"] = "Flatfielded Empirical SOSS Background"
-        bkg_dn_fits = fits.ImageHDU(data=bkg_denoise, name="BKGDN")
-        bkg_dn_fits.header["DESCRIP"] = (
-            "Flatfielded Empirical SOSS Background NLM denoised"
-        )
+            mid_time_mjd = np.array(
+                [model.meta.exposure.mid_time_mjd for model in input_models]
+            )
+            mid_time_mjd = Time(mid_time_mjd, format="mjd")
+            day_of_year = convert_to_day_of_year(mid_time_mjd)
 
-        # RA and Dec pointing averages associated with the background obs
-        skycoords = np.array(
-            [
-                (
-                    fits.getval(file, "RA_V1", extname="SCI"),
-                    fits.getval(file, "DEC_V1", extname="SCI"),
-                )
-                for file in files
-            ]
-        )
-        skycoords_mean = np.mean(skycoords, axis=0)
-        ra_obs, dec_obs = skycoords_mean
-        sky_coords = SkyCoord(ra_obs, dec_obs, format="icrs", unit="deg")
+            outfile = f"nis-clear-gr700xd-ECLIPTIC-LON{lon:.2f}-LAT{lat:.2f}_{keys[-1]}_skybkg.fits"
 
-        # convert to ecliptic coordinates
-        ecliptic_coords = sky_coords.transform_to("geocentricmeanecliptic")
-        lon = ecliptic_coords.lon.value
-        lat = ecliptic_coords.lat.value
+            primary = fits.PrimaryHDU()
 
-        # # average/middle time of the background
+            date_created = get_current_utc()
 
-        mid_time_mjd = np.array(
-            [model.meta.exposure.mid_time_mjd for model in input_models]
-        )
-        mid_time_mjd = Time(mid_time_mjd, format="mjd")
-        day_of_year = convert_to_day_of_year(mid_time_mjd)
+            primary.header["DATE"] = date_created, "Date file created"
+            primary.header["FILENAME"] = outfile
+            primary.header["AUTHOR"] = "Tyler Baines"
+            primary.header["DESCRIP"] = "Empirical SOSS Background"
+            primary.header["FLATCORR"] = True, "Flatfield corrected images"
+            primary.header["NSAMPS"] = (
+                len(files),
+                "Number of images for empirical background",
+            )
+            primary.header["DAY"] = np.median(day_of_year), "median day of year"
+            primary.header["MINDAY"] = np.min(day_of_year), "min day of year"
+            primary.header["MAXDAY"] = np.max(day_of_year), "max day of year"
 
-        outfile = f"nis-clear-gr700xd-ECLIPTIC-LON{lon:.2f}-LAT{lat:.2f}_{keys[-1]}_skybkg.fits"
+            outfits = fits.HDUList([primary, bkg_fits, bkg_dn_fits])
 
-        primary = fits.PrimaryHDU()
-
-        date_created = get_current_utc()
-
-        primary.header["DATE"] = date_created, "Date file created"
-        primary.header["FILENAME"] = outfile
-        primary.header["AUTHOR"] = "Tyler Baines"
-        primary.header["DESCRIP"] = "Empirical SOSS Background"
-        primary.header["FLATCORR"] = True, "Flatfield corrected images"
-        primary.header["NSAMPS"] = (
-            len(files),
-            "Number of images for empirical background",
-        )
-        primary.header["DAY"] = np.median(day_of_year), "median day of year"
-        primary.header["MINDAY"] = np.min(day_of_year), "min day of year"
-        primary.header["MAXDAY"] = np.max(day_of_year), "max day of year"
-
-        outfits = fits.HDUList([primary, bkg_fits, bkg_denoise])
-
-        outfits.writeto(sossbkg_dir / outfile, overwrite=True)
+            outfits.writeto(sossbkg_dir / outfile, overwrite=True)
