@@ -14,9 +14,8 @@ def filter_dataframe(df: pd.DataFrame, query_criteria: str) -> pd.DataFrame:
     return df.query(query_criteria)
 
 
-def save_dataframes(dataframes: dict):
+def save_dataframes(dataframes: dict[str, pd.DataFrame]) -> None:
     """Saves DataFrames to CSV files in the specified directory."""
-
     for filename, df in dataframes.items():
         df.to_csv(filename, index=False)
 
@@ -47,12 +46,13 @@ if __name__ == "__main__":
     subarrays = ["FULL"]
     filters = ["CLEAR"]
     zodiCal_programs = [1541, 4479, 6658]
+    min_program = 1091
 
     # query criteria to filter soss observations
     query = (
         "SUBARRAY == @subarrays and "
         "FILTER == @filters and "
-        "PROGRAM >= 1091 and "
+        "PROGRAM >= @min_program and "
         "(FILENAME.str.contains('uncal') or FILENAME.str.contains('rateints'))"
     )
 
