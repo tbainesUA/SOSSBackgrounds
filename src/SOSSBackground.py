@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from astropy.io import fits
-from astorpy.stats import sigma_clipped_stats
+from astropy.stats import sigma_clipped_stats
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
 
@@ -82,11 +82,14 @@ def group_sequential_observations(df, gap_days=1):
 
     Parameters:
         df (pd.DataFrame): DataFrame containing the observations.
-        date_col (str): The column name with the observation dates in ISO format.
-        gap_days (int): Number of days to define a gap. Observations with gaps greater than this will start a new group.
+        date_col (str): The column name with the observation dates in ISO
+            format.
+        gap_days (int): Number of days to define a gap. Observations with gaps
+            greater than this will start a new group.
 
     Returns:
-        pd.DataFrame: DataFrame with an additional 'group' column indicating sequential groups.
+        pd.DataFrame: DataFrame with an additional 'group' column indicating
+        sequential groups.
     """
     # Convert the date column to datetime if not already
     times = pd.to_datetime(df)
@@ -121,7 +124,9 @@ flatfield_dir.mkdir(parents=True, exist_ok=True)
 fits_files = zodical_stage1_df["FILEPATH"]
 
 # apply flatield step
-flatfield_fits_files = apply_flat_field(fits_files, flatfield_dir, parallel=True)
+flatfield_fits_files = apply_flat_field(
+    files=fits_files, output_dir=flatfield_dir, parallel=True
+)
 
 # add files to the dataframe
 zodical_stage1_df["FLATFIELD_FILEPATHS"] = pd.Series(flatfield_fits_files)
@@ -156,7 +161,8 @@ for keys, df in grouped_dfs:
         lambda x: group_sequential_observations(x)
     )
 
-    # iterate over the observation groups to process and combine the file datasets
+    # iterate over the observation groups to process and combine the
+    # file datasets
     for _, files in df.groupby(["obs_groups"])["FLATFIELD_FILEPATH"]:
 
         # load the data
@@ -166,7 +172,9 @@ for keys, df in grouped_dfs:
                 input_models.append(datamodels.CubeModel(hdul))
 
         # make initial background image
-        bkg = sigma_clipped_stats([dm.data[0] for dm in input_models], sigma=1, axis=0)
+        bkg = sigma_clipped_stats(
+            data=[dm.data[0] for dm in input_models], sigma=1, axis=0
+        )
 
         # source masking
         shape = (len(files), 2040, 2040)
