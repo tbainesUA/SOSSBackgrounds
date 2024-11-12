@@ -1,0 +1,6 @@
+jwst
+jwst_backgrounds
+numpy
+scipy
+matplotlib
+jupyter
