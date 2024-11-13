@@ -25,3 +25,18 @@ def detect_source_mask(data, err=None, mask=None, bkg=None, nsigma=2):
     source_mask = np.logical_or(mask, source_mask)
 
     return source_mask
+
+
+def create_source_masks(data_list, err_list, dq_list, bkg=None, nsigma=2):
+    shape = np.shape(data_list)
+    source_masks = np.zeros(shape, dtype=bool)
+    for i, (data, err, dq) in enumerate(zip(data_list, err_list, dq_list)):
+        mask = dq > 0
+        source_masks[i] = detect_source_mask(
+            data=data,
+            err=err,
+            mask=mask,
+            bkg=bkg,
+            nsigma=nsigma,
+        )
+    return source_masks
