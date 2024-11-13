@@ -12,6 +12,6 @@ This repository contains scripts to generate empirical SOSS backgrounds using da
 The generated backgrounds will be used to improve the background subtraction step in the SOSS data reduction process. Current background subtraction techniques, which rely on a static background template, often result in residuals of a few percent when scaling the template across different observations. This method does not perform optimally, and our work aims to refine this process.
 
 ### Key Points:
-Program 4479 & 6658: These programs provide the calibration data for SOSS background observations.
-FULL Mode: Observations are conducted in FULL mode across various sky positions and dither pointings.
-Goal: Improve background subtraction for SOSS data reduction by creating more accurate, empirical background models.
+* Program 4479 & 6658: These programs provide the calibration data for SOSS background observations.
+* FULL Mode: Observations are conducted in FULL mode across various sky positions and dither pointings.
+* Goal: Improve background subtraction for SOSS data reduction by creating more accurate, empirical background models.
