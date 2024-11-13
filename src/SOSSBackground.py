@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from astropy.io import fits
+from astropy.table import Table
 from astropy.stats import sigma_clipped_stats
 
 from skimage.restoration import denoise_nl_means, estimate_sigma
@@ -178,10 +179,17 @@ def write_fits_file(keys, bkg, data, err, masks, metadata_table, output_dir):
     )
 
     # ImageHDUs for data and mask array of the input images w/ source masks
-    image_hdu = fits.ImageHDU(data=data_list, name="IMAGES")
-    mask_hdu = fits.ImageHDU(data=source_masks.astype(int), name="MASKS")
+    sci_hdu = fits.ImageHDU(data=data, name="SCI")
+    mask_hdu = fits.ImageHDU(data=masks.astype(int), name="MASKS")
+    err_hdu = fits.ImageHDU(data=err, name="ERR")
 
-    outfits = fits.HDUList([primary, bkg_hdu, bkg_dn_hdu, image_hdu, mask_hdu])
+    table_hdu = fits.BinTableHDU(
+        Table.from_pandas(metadata_table), name="METADATA"
+    )
+
+    outfits = fits.HDUList(
+        [primary, bkg_hdu, bkg_dn_hdu, sci_hdu, err_hdu, mask_hdu, table_hdu]
+    )
 
     outfits.writeto(output_dir / outfile, overwrite=True)
 
