@@ -1,8 +1,8 @@
 import pandas as pd
 from astropy.time import Time
 
-from .coordinates import equatorial_to_ecliptic_coords
-from .time_conversion import convert_to_day_of_year
+from coordinates import equatorial_to_ecliptic_coords
+from time_conversion import convert_to_day_of_year
 
 
 def extract_metadata(model):

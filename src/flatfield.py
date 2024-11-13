@@ -50,7 +50,7 @@ def apply_flatfield(files, output_dir, parallel=False, overwrite=False):
     Parameters:
     - files (list): List containing paths to FITS files.
     - output_dir (Path): Directory where processed files will be saved.
-    - parallel (bool): If True, use multiprocessing to process files in parallel.
+    - parallel (bool): If True, use  to process files in parallel.
     - overwrite (bool): If True, reprocess files even if they already exist.
 
     Returns:

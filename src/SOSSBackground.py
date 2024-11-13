@@ -128,16 +128,16 @@ def write_fits_file(keys, bkg, data, err, masks, metadata_table, output_dir):
     bkg_denoise = apply_denoise_nl_means(bkg)
 
     # pad images to re-stitch reference pixels
-    padwidth = (4, 4)
-    bkg = np.pad(bkg, (padwidth, padwidth))
-    bkg_denoise = np.pad(bkg_denoise, (padwidth, padwidth))
-    data = np.pad(data, ((0, 0), padwidth, padwidth))
-    masks = np.pad(
-        masks,
-        ((0, 0), padwidth, padwidth),
-        mode="constant",
-        constant_values=True,
-    )
+    # padwidth = (4, 4)
+    # bkg = np.pad(bkg, (padwidth, padwidth))
+    # bkg_denoise = np.pad(bkg_denoise, (padwidth, padwidth))
+    # data = np.pad(data, ((0, 0), padwidth, padwidth))
+    # masks = np.pad(
+    #     masks,
+    #     ((0, 0), padwidth, padwidth),
+    #     mode="constant",
+    #     constant_values=True,
+    # )
 
     program, targprop, observtn, obs_group = keys
 
@@ -177,13 +177,11 @@ def write_fits_file(keys, bkg, data, err, masks, metadata_table, output_dir):
         "Flatfielded Empirical SOSS Background NLM denoised"
     )
 
-    # ImageHDU for masked array of the input images w/ source masks
-    image_hdu = fits.ImageHDU(
-        data=np.ma.array(data=data_list, mask=source_masks),
-        name="IMAGES",
-    )
+    # ImageHDUs for data and mask array of the input images w/ source masks
+    image_hdu = fits.ImageHDU(data=data_list, name="IMAGES")
+    mask_hdu = fits.ImageHDU(data=source_masks.astype(int), name="MASKS")
 
-    outfits = fits.HDUList([primary, bkg_hdu, bkg_dn_hdu, image_hdu])
+    outfits = fits.HDUList([primary, bkg_hdu, bkg_dn_hdu, image_hdu, mask_hdu])
 
     outfits.writeto(output_dir / outfile, overwrite=True)
 
@@ -296,5 +294,11 @@ if __name__ == "__main__":
 
         # Lastly, write results to a file
         write_fits_file(
-            bkg, data_list, err_list, source_masks, metadata_table, sossbkg_dir
+            keys,
+            bkg,
+            data_list,
+            err_list,
+            source_masks,
+            metadata_table,
+            sossbkg_dir,
         )
