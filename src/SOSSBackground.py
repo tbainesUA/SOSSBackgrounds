@@ -254,6 +254,7 @@ if __name__ == "__main__":
     # addition, it's hypothesized that the background may vary spatailly given
     # the PWCPOS keyword.
 
+    # TODO: add parallel processing support
     for keys, df in grouped_dfs:
 
         # iterate over the observation groups to process and combine the
@@ -290,6 +291,8 @@ if __name__ == "__main__":
 
         # Fill NaNs
         bkg = apply_maskfill(bkg, mask=np.isnan(bkg))
+
+        # TODO: If needed, add iterative source masking for bkg estimation
 
         # Lastly, write results to a file
         write_fits_file(
