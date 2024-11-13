@@ -20,8 +20,22 @@ Output filename: nis_clear_gr700xd_LON009_LAT-02_DOY320_001_000_skyflat.fits
 
 
 ---
-Output Files and File Naming Scheme
+
+### Output Files and File Naming Scheme
+
 The scripts in this repository generate background model files in FITS format. These files represent the sky background observations and are used in the SOSS data reduction process. Each output file corresponds to a specific sky position and observation, which are reflected in the file name.
+
+All output files include the following extensions:
+
+  1.  BKG    : Empirical Sci. Background Data
+  2.  BKGDN  : Empirical Sci. Background Data (Smoothed/Denoised)
+  3.  IMAGES(rename to SCI) : Images used to Produce Empirical Background   
+  4.  MASKS  : Source Masks
+  
+to include in outputs:
+
+  5.  ERR : Error Array 
+  6.  DQ  : Data Quality Array 
 
 ### File Naming Scheme
 
